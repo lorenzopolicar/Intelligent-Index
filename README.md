@@ -24,8 +24,8 @@ Incoming data is structured as:
 
 - Data is buffered via **Redis Streams**, organized by `namespace`.
 - Buffers are flushed based on:
-  - **Entry count** (e.g., every 1,000 records)
-  - **Time intervals** (e.g., every 5 minutes)
+  - **Entry count** (e.g., every 20 records)
+  - **Time intervals** (e.g., every 6 hours)
 
 ---
 
@@ -42,7 +42,7 @@ Once a buffer flush is triggered, the **extraction pipeline** begins:
   Gathers relevant past expert interactions (corrections, emphasis, notes) to guide extraction accuracy and relevance.
 
 - **Short-Term Memory Retrieval**  
-  Fetches the existing STM report (structured JSON), which includes recent dated entries and general knowledge.
+  Fetches the existing STM report, which includes recent dated entries information and general knowledge.
 
 #### 🧾 LLM Extraction Process
 
