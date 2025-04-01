@@ -108,3 +108,57 @@ def load_rag():
         ),
     )
     return rag
+
+def data_formatter(data):
+    """
+    Converts a list of dictionaries with 'namespace', 'date', and 'contents'
+    keys into a structured string for LLM parsing.
+
+    Parameters:
+        data_list (list): A list of dictionaries. Each dictionary should have
+                          the keys 'namespace', 'date', and 'contents', where
+                          'contents' is a string.
+
+    Returns:
+        str: A structured string with the formatted data.
+    """
+    formatted_entries = []
+    
+    for entry in data:
+        namespace = entry.get("namespace", "N/A")
+        date = entry.get("date", "N/A")
+        contents = entry.get("contents", "N/A")
+        
+        # Format each entry as a structured block
+        formatted_entry = (
+            f"Namespace: {namespace}\n"
+            f"Date: {date}\n"
+            "Contents:\n"
+            f"{contents}\n"
+        )
+        formatted_entries.append(formatted_entry)
+    
+    # Combine all entries with a separating newline between each entry
+    return "\n".join(formatted_entries)
+
+def get_episodic_memory(namespace, instructions, data, store):
+        similar = store.search(
+            ("episodes", f"{namespace}"),
+            query=f"Instructions: {instructions}\n\nData:\n{data}",
+            limit=1,
+        )
+
+        # Step 2: Build system message with relevant experience
+        episodic_memory = "" 
+        if similar:
+            episodic_memory += "\n\n### EPISODIC MEMORY:"
+            for i, item in enumerate(similar, start=1):
+                episode = item.value["content"]
+                episodic_memory += f"""
+                    Episode {i}:
+                    When: {episode['observation']}
+                    Thought: {episode['thoughts']}
+                    Did: {episode['action']}
+                    Result: {episode['result']}
+                """
+        return episodic_memory

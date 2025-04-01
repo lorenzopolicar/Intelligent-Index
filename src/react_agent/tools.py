@@ -13,7 +13,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import InjectedToolArg
 
 from langgraph.store.memory import InMemoryStore
-from langmem import ReflectionExecutor, create_memory_store_manager, create_multi_prompt_optimizer
+from langmem import ReflectionExecutor, create_memory_store_manager, create_prompt_optimizer
 from react_agent.utils import llm, embeddings
 from react_agent.schemas import Episode
 from typing_extensions import Annotated
@@ -50,14 +50,14 @@ reflection_executor = ReflectionExecutor(memory_manager)
 
 episodic_memory_manager = create_memory_store_manager(
     llm,
-    namespace=("memories", "episodes"),
+    namespace=("episodes", "{namespace}"),
     schemas=[Episode],
     instructions="Extract exceptional examples of noteworthy information gathering and analysis scenarios, including what made them effective."
 )
 
 # Create optimizer
-optimizer = create_multi_prompt_optimizer(
-    "anthropic:claude-3-5-sonnet-latest",
+prompt_optimizer = create_prompt_optimizer(
+    llm,
     kind="gradient",  # Best for team dynamics
     config={"max_reflection_steps": 3},
 )

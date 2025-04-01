@@ -6,118 +6,174 @@ Works with a chat model with tool calling support.
 from datetime import datetime, timezone
 from typing import Dict, List, Literal, cast
 
-from langchain_core.messages import AIMessage
-from langchain_core.runnables import RunnableConfig
-from langgraph.graph import StateGraph
-from langgraph.prebuilt import ToolNode
+from langgraph.graph import StateGraph, START, END
 
-from react_agent.configuration import Configuration
-from react_agent.state import InputState, State
-from react_agent.tools import TOOLS
-from react_agent.utils import load_chat_model
+from react_agent.state import State
+from react_agent.tools import store, episodic_memory_manager, prompt_optimizer
+from react_agent.prompts import base_information_extraction_prompt, short_term_memory_manager_system
+from react_agent.utils import data_formatter, llm, get_episodic_memory
 
-# Define the function that calls the model
+from langchain_core.prompts import ChatMessagePromptTemplate
+from langchain_core.messages import AIMessage, HumanMessage
 
+from langgraph.types import interrupt, Command
 
-async def call_model(
-    state: State, config: RunnableConfig
-) -> Dict[str, List[AIMessage]]:
-    """Call the LLM powering our "agent".
-
-    This function prepares the prompt, initializes the model, and processes the response.
-
-    Args:
-        state (State): The current state of the conversation.
-        config (RunnableConfig): Configuration for the model run.
-
-    Returns:
-        dict: A dictionary containing the model's response message.
+# Node: Generate report based on data
+async def generate_report(state):
     """
-    configuration = Configuration.from_runnable_config(config)
+    Extracts information
+    """
+    data = state.get("data", [])
+    namespace = state.get("namespace")
 
-    # Initialize the model with tool binding. Change the model or add more tools here.
-    model = load_chat_model(configuration.model).bind_tools(TOOLS)
+    if not data or not namespace: 
+        return state
 
-    # Format the system prompt. Customize this to change the agent's behavior.
-    system_message = configuration.system_prompt.format(
-        system_time=datetime.now(tz=timezone.utc).isoformat()
+    instructions_item = store.get(("instructions",), key=f"{namespace}")
+    
+    if not instructions_item:
+        store.put(("instructions",), key=f"{namespace}", value={"prompt": base_information_extraction_prompt})
+        instructions = base_information_extraction_prompt
+    
+    instructions = instructions_item.value["prompt"]
+    stm_item = store.get(("stm"), key=f"{namespace}")
+    
+    stm = ""
+
+    if stm_item:
+        stm = stm_item.value["report"]
+    
+    instructions += f"\n\nShort Term Memory: {stm}"
+
+    episodic_memory = get_episodic_memory(namespace, instructions, data, store)
+    
+    instructions += episodic_memory
+
+    prompt = ChatMessagePromptTemplate.from_messages(
+        [
+            ("system", instructions),
+            ("placeholder", "{messages}")
+        ]
     )
 
-    # Get the model's response
-    response = cast(
-        AIMessage,
-        await model.ainvoke(
-            [{"role": "system", "content": system_message}, *state.messages], config
-        ),
+    prompt = prompt.format(messages=[HumanMessage(content=data_formatter(data))])
+    response = llm.invoke(prompt)
+    return {"messages": [response], "report": response}
+
+# Node: Ask for human approval or feedback.
+def human_approval(state: State) -> Command[Literal["refine_report", "finalize_report"]]:
+    # Pause execution and show the generated report for review.
+    feedback = interrupt({
+        "question": "Approve to finalize or provide feedback for refinement.",
+        "report": state.get("report", "No report generated")
+    })
+
+    # Expecting feedback in the form of a dict.
+    # Example approved feedback: {"approve": True}
+    # Example for refinement: {"approve": False, "edits": "Please adjust the tone to be more formal."}
+    if isinstance(feedback, dict) and feedback.get("approve") is True:
+        return Command(goto="finalize_report")
+    else:
+        edits = feedback.get("feedback", "")
+        message = HumanMessage(content=f"Report needs refinement. Feedback: {edits}")
+        return Command(goto="refine_report", update={"messages": [message], "feedback": edits})
+
+# Node: Refine the report based on the human's feedback.
+def refine_report(state: State) -> State:
+    messages = state.get("messages", [])
+    
+    # Craft a prompt that instructs the LLM to refine the report based on the feedback.
+    refine_prompt = (
+        "The following report needs refinement based on the feedback provided.\n"
+        "Please provide a refined version of the report."
     )
 
-    # Handle the case when it's the last step and the model still wants to use a tool
-    if state.is_last_step and response.tool_calls:
-        return {
-            "messages": [
-                AIMessage(
-                    id=response.id,
-                    content="Sorry, I could not find an answer to your question in the specified number of steps.",
-                )
-            ]
-        }
+    prompt = ChatMessagePromptTemplate.from_messages(
+        [
+            ("system", refine_prompt),
+            ("placeholder", "{messages}")
+        ]
+    )
 
-    # Return the model's response as a list to be added to existing messages
-    return {"messages": [response]}
+    prompt = prompt.format(messages=messages)
 
+    # Generate the refined report.
+    refined_report = llm.invoke(prompt)
+    return {"messages": [refined_report], "report": refined_report}
 
-# Define a new graph
+# Node: Finalize the report when approved.
+def finalize_report(state: State) -> State:
+    messages = state.get("messages", [])
+    feedback_given = state.get("feedback")
+    namespace = state.get("namespace")
+    report = state.get("report", "")
+    if not feedback_given:
+        return state
+    
+    # Captures episodic memory 
+    episodic_memory_manager.invoke({"messages": messages}, config={"configurable": {"namespace": namespace}})
 
-builder = StateGraph(State, input=InputState, config_schema=Configuration)
+    # Optimises namespace prompt
+    trajectories = [(messages, None)]
+    prompt = store.get(("instructions",), key=f"{namespace}").value["prompt"]
+    updated_prompt = prompt_optimizer.invoke({"prompt": prompt, "trajectories": trajectories})
 
-# Define the two nodes we will cycle between
-builder.add_node(call_model)
-builder.add_node("tools", ToolNode(TOOLS))
+    store.put(("instructions",), key=f"{namespace}", value={"prompt": updated_prompt})
 
-# Set the entrypoint as `call_model`
-# This means that this node is the first one called
-builder.add_edge("__start__", "call_model")
+    # Update STM
+    stm_item = store.get(("stm"), key=f"{namespace}")
+    stm = ""
+    if stm_item:
+        stm = stm_item.value["report"]
+    
+    prompt = ChatMessagePromptTemplate.from_messages(
+        [
+            ("system", short_term_memory_manager_system),
+            ("placeholder", "{messages}")
+        ]
+    )
 
+    prompt = prompt.format(messages=HumanMessage(content=f"Current STM report: {stm}\n\nNew information: {report}"))
+    new_stm = llm.invoke(prompt)
 
-def route_model_output(state: State) -> Literal["__end__", "tools"]:
-    """Determine the next node based on the model's output.
+    store.put(("stm",), key=f"{namespace}", value={"report": new_stm})
+    return state
 
-    This function checks if the model's last message contains tool calls.
+def capture_episode(state):
+    pass
 
-    Args:
-        state (State): The current state of the conversation.
+def optimise_prompt(state):
+    pass
 
-    Returns:
-        str: The name of the next node to call ("__end__" or "tools").
-    """
-    last_message = state.messages[-1]
-    if not isinstance(last_message, AIMessage):
-        raise ValueError(
-            f"Expected AIMessage in output edges, but got {type(last_message).__name__}"
-        )
-    # If there is no tool call, then we finish
-    if not last_message.tool_calls:
-        return "__end__"
-    # Otherwise we execute the requested actions
-    return "tools"
+def update_short_term_memory(state):
+    pass
 
+# Build the agent graph.
+graph = StateGraph(State)
+graph.add_node("generate_report", generate_report)
+graph.add_node("human_approval", human_approval)
+graph.add_node("refine_report", refine_report)
+graph.add_node("finalize_report", finalize_report)
 
-# Add a conditional edge to determine the next step after `call_model`
-builder.add_conditional_edges(
-    "call_model",
-    # After call_model finishes running, the next node(s) are scheduled
-    # based on the output from route_model_output
-    route_model_output,
-)
+graph.add_edge(START, "generate_report")
 
-# Add a normal edge from `tools` to `call_model`
-# This creates a cycle: after using tools, we always return to the model
-builder.add_edge("tools", "call_model")
+# Define transitions between nodes:
+# After generating the report, go to human approval.
+graph.add_edge("generate_report", "human_approval")
 
-# Compile the builder into an executable graph
-# You can customize this by adding interrupt points for state updates
-graph = builder.compile(
-    interrupt_before=[],  # Add node names here to update state before they're called
-    interrupt_after=[],  # Add node names here to update state after they're called
-)
-graph.name = "ReAct Agent"  # This customizes the name in LangSmith
+# After refining, go back to human approval for review.
+graph.add_edge("refine_report", "human_approval")
+
+graph.add_edge("finalize_report", END)
+
+# Compile the graph with a checkpointer to support interrupts.
+compiled_graph = graph.compile(checkpointer="your_checkpointer")
+
+compiled_graph.name = "ReAct Agent"  # This customizes the name in LangSmith
+
+from IPython.display import Image, display
+image_data = compiled_graph.get_graph().draw_mermaid_png()
+
+# Save to a file
+with open("intelligent_index.png", "wb") as f:
+    f.write(image_data)

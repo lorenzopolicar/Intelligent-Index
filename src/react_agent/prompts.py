@@ -11,7 +11,7 @@ base_information_extraction_prompt = """
 """
 
 
-short_term_memory_prompt = """
+short_term_memory_manager_system = """
 You are a **Short-Term Memory Manager System** designed to handle and process streaming data arriving at regular intervals. 
 Your goal is to maintain and continuously update a long-running **dynamic report**, structured into **dated** and 
 **undated (general knowledge)** sections.
