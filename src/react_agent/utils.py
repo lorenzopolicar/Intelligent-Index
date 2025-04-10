@@ -9,6 +9,8 @@ import logging
 from openai import AzureOpenAI
 from langchain_openai.chat_models import AzureChatOpenAI
 from langchain_openai.embeddings import AzureOpenAIEmbeddings
+from langgraph.store.postgres import PostgresStore
+from psycopg import Connection
 from lightrag.kg.shared_storage import initialize_pipeline_status
 
 logging.basicConfig(level=logging.INFO)
@@ -25,20 +27,24 @@ AZURE_EMBEDDING_API_VERSION = os.getenv("AZURE_EMBEDDING_API_VERSION")
 AZURE_EMBEDDING_ENDPOINT = os.getenv("AZURE_EMBEDDING_ENDPOINT")
 
 WORKING_DIR = "./intellidesign"
+DB_URI = "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+EMBEDDINGS_DIMENSION = 1536
 
-llm = AzureChatOpenAI(
-    api_key=AZURE_OPENAI_API_KEY,
-    azure_endpoint=AZURE_OPENAI_ENDPOINT,
-    azure_deployment=AZURE_OPENAI_DEPLOYMENT,
-    api_version=AZURE_OPENAI_API_VERSION
-)
+def get_llm():
+    return AzureChatOpenAI(
+        api_key=AZURE_OPENAI_API_KEY,
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        azure_deployment=AZURE_OPENAI_DEPLOYMENT,
+        api_version=AZURE_OPENAI_API_VERSION
+    )
 
-embeddings = AzureOpenAIEmbeddings(
-    api_key=AZURE_OPENAI_API_KEY,
-    azure_endpoint=AZURE_EMBEDDING_ENDPOINT,
-    azure_deployment=AZURE_EMBEDDING_DEPLOYMENT,
-    api_version=AZURE_EMBEDDING_API_VERSION
-)
+def get_embeddings():
+    return AzureOpenAIEmbeddings(
+        api_key=AZURE_OPENAI_API_KEY,
+        azure_endpoint=AZURE_EMBEDDING_ENDPOINT,
+        azure_deployment=AZURE_EMBEDDING_DEPLOYMENT,
+        api_version=AZURE_EMBEDDING_API_VERSION
+    )
 
 async def llm_model_func(
     prompt, system_prompt=None, history_messages=[], keyword_extraction=False, **kwargs
@@ -57,7 +63,7 @@ async def llm_model_func(
     messages.append({"role": "user", "content": prompt})
 
     chat_completion = client.chat.completions.create(
-        model=AZURE_OPENAI_DEPLOYMENT,  # model = "deployment_name".
+        model=AZURE_OPENAI_DEPLOYMENT, 
         messages=messages,
         temperature=kwargs.get("temperature", 0),
         top_p=kwargs.get("top_p", 1),
@@ -77,16 +83,30 @@ async def embedding_func(texts: list[str]) -> np.ndarray:
     embeddings = [item.embedding for item in embedding.data]
     return np.array(embeddings)
 
+def load_postgres_store():
+    connection_kwargs = {
+        "autocommit": True,
+        "prepare_threshold": 0,
+    }
 
-embedding_dimension = 1536
+    conn = Connection.connect(DB_URI, **connection_kwargs)
 
+    postgres_store = PostgresStore(
+        conn,
+        index={
+            "dims": EMBEDDINGS_DIMENSION,
+            "embed": get_embeddings()
+        }
+    )
+    postgres_store.setup()
+    return postgres_store
 
 async def initialize_rag():
     rag = LightRAG(
         working_dir=WORKING_DIR,
         llm_model_func=llm_model_func,
         embedding_func=EmbeddingFunc(
-            embedding_dim=embedding_dimension,
+            embedding_dim=EMBEDDINGS_DIMENSION,
             max_token_size=8192,
             func=embedding_func,
         ),
@@ -102,7 +122,7 @@ def load_rag():
         working_dir=WORKING_DIR,
         llm_model_func=llm_model_func,
         embedding_func=EmbeddingFunc(
-            embedding_dim=embedding_dimension,
+            embedding_dim=EMBEDDINGS_DIMENSION,
             max_token_size=8192,
             func=embedding_func,
         ),
@@ -127,7 +147,7 @@ def data_formatter(data):
     for entry in data:
         namespace = entry.get("namespace", "N/A")
         date = entry.get("date", "N/A")
-        contents = entry.get("contents", "N/A")
+        contents = entry.get("content", "N/A")
         
         # Format each entry as a structured block
         formatted_entry = (
@@ -143,7 +163,7 @@ def data_formatter(data):
 
 def get_episodic_memory(namespace, instructions, data, store):
         similar = store.search(
-            ("episodes", f"{namespace}"),
+            ("episodes", namespace),
             query=f"Instructions: {instructions}\n\nData:\n{data}",
             limit=1,
         )

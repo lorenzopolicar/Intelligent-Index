@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
 
-class Episode(BaseModel):  # 
+from typing import Any, Dict
+
+class Episode(BaseModel):  
     """Write the episode from the perspective of the agent within it. Use the benefit of hindsight to record the memory, saving the agent's key internal thought process so it can learn over time."""
     observation: str = Field(..., description="The context and setup - what happened")
     thoughts: str = Field(
@@ -17,3 +19,12 @@ class Episode(BaseModel):  #
         description="Outcome and retrospective. What did you do well? What could you do better next time? I ...",
     )
 
+class GraphInvocationRequest(BaseModel):
+    data: Any      
+    namespace: str
+    content: str
+
+class GraphResponse(BaseModel):
+    status: str    
+    result: Dict[str, Any] = None
+    human_interrupt: Dict[str, Any] = None

@@ -12,20 +12,9 @@ from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import InjectedToolArg
 
-from langgraph.store.memory import InMemoryStore
-from langmem import ReflectionExecutor, create_memory_store_manager, create_prompt_optimizer
-from react_agent.utils import llm, embeddings
-from react_agent.schemas import Episode
 from typing_extensions import Annotated
 
 from react_agent.configuration import Configuration
-
-store = InMemoryStore(
-    index={
-        "dims": 1536,
-        "embed": embeddings
-    }
-)
 
 async def search(
     query: str, *, config: Annotated[RunnableConfig, InjectedToolArg]
@@ -40,28 +29,5 @@ async def search(
     wrapped = TavilySearchResults(max_results=configuration.max_search_results)
     result = await wrapped.ainvoke({"query": query})
     return cast(list[dict[str, Any]], result)
-
-memory_manager = create_memory_store_manager(
-    llm,
-    namespace=("memories",),
-)
-
-reflection_executor = ReflectionExecutor(memory_manager)
-
-episodic_memory_manager = create_memory_store_manager(
-    llm,
-    namespace=("episodes", "{namespace}"),
-    schemas=[Episode],
-    instructions="Extract exceptional examples of noteworthy information gathering and analysis scenarios, including what made them effective."
-)
-
-# Create optimizer
-prompt_optimizer = create_prompt_optimizer(
-    llm,
-    kind="gradient",  # Best for team dynamics
-    config={"max_reflection_steps": 3},
-)
-
-
 
 TOOLS: List[Callable[..., Any]] = [search]

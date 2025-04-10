@@ -6,8 +6,19 @@ System time: {system_time}"""
 
 
 base_information_extraction_prompt = """
+You are an expert analyst. Please examine the text and produce a concise, structured report covering:
 
+Overview: Summarize the main topic and goal.
 
+Key Points: Identify critical ideas, recurring themes, evidence, and data.
+
+Analysis: Highlight contradictions, gaps, or biases.
+
+Context & Implications: Discuss broader significance and potential impact.
+
+Recommendations: Suggest practical action items or next steps.
+
+Organize your findings with clear headings and bullet points for easy reference.
 """
 
 
