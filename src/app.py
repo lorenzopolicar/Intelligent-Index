@@ -26,10 +26,11 @@ def check_for_interrupt(thread_config: dict) -> Optional[Dict[str, Any]]:
     exposes tasks with an `interrupts` attribute.
     """
     state = intelligent_index.get_state(thread_config)
+    
     if state and hasattr(state, "tasks") and any(task.interrupts for task in state.tasks):
         # For demonstration, we return a simple message.
         # You could extract more details from the pending Interrupt objects.
-        return {"question": "Approve to finalize or provide feedback for refinement."}
+        return state.tasks[-1].interrupts[-1].value
     return None
 
 @app.post("/invoke", response_model=GraphResponse)

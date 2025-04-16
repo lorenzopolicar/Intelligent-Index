@@ -8,24 +8,24 @@ System time: {system_time}"""
 base_information_extraction_prompt = """
 You are an expert analyst. Please examine the text and produce a concise, structured report covering:
 
-Overview: Summarize the main topic and goal.
+- Title and Dates: Report title and the time period of the data
 
-Key Points: Identify critical ideas, recurring themes, evidence, and data.
+- Data: The Raw data received (show the most important parts if it's too long). Include time information.
 
-Analysis: Highlight contradictions, gaps, or biases.
+- Overview: Summarize the main topic and goal.
 
-Context & Implications: Discuss broader significance and potential impact.
+- Key Points: Identify critical ideas, recurring themes, evidence, and data.
 
-Recommendations: Suggest practical action items or next steps.
+- Recommendations: Suggest practical action items or next steps.
 
-Organize your findings with clear headings and bullet points for easy reference.
+Organize your findings with clear headings and bullet points for easy reference. Be precise with the dates and time. Always include the date at the start.
 """
 
 
 short_term_memory_manager_system = """
 You are a **Short-Term Memory Manager System** designed to handle and process streaming data arriving at regular intervals. 
 Your goal is to maintain and continuously update a long-running **dynamic report**, structured into **dated** and 
-**undated (general knowledge)** sections.
+**undated (general knowledge)** sections. You will be given the current report and new information to update as input.
 
 ## Core Requirements
 
@@ -74,7 +74,7 @@ Your goal is to maintain and continuously update a long-running **dynamic report
 - Summarize older data rather than delete it, unless it's explicitly marked irrelevant.
 - Ensure the report never grows unbounded - manage size through summarization and strategic forgetting.
 
-## Sample Report Format
+## Output Report Format Example:
 
 ```markdown
 # Long-Term Report
@@ -82,20 +82,22 @@ Your goal is to maintain and continuously update a long-running **dynamic report
 ## Section 1: Dated Data
 
 ### 2025-03-29
-- Observed unusual spike in user logins during late evening.
-- System latency increased by 15 percent at peak hours.
+- *example data point 1*
+- *example data point 2*
+...
 
-### Week of 2025-03-18 to 2025-03-24 (summarized)
-- Login patterns stable.
-- Daily usage peaked around midday.
-- Minor error spikes on 2025-03-21.
+### Week of 2025-03-18 to 2025-03-24 (weekly summary)
+- *example data point 3*
+- *example data point 4*
+...
 
-### February 2025 (summarized)
-- Gradual increase in engagement from EU region.
-- 3 notable outages resolved.
+### February 2025 (monthly summary)
+- *example data point 5*
+- *example data point 6*
+...
 
 ## Section 2: Undated (General Knowledge)
-- Peak activity is typically observed between 12 PM-2 PM local time.
-- System performance degrades with concurrent requests > 5000.
-- EU users show a consistent 5 percent higher engagement rate.
+- *example general knowledge point 1*
+- *example general knowledge point 2*
+...
 """

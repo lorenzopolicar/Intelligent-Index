@@ -107,10 +107,8 @@ def human_approval(state: State) -> Command[Literal["refine_report", "finalize_r
     # Example approved feedback: {"approve": True}
     # Example for refinement: {"feedback": "Please adjust the tone to be more formal."}
     if feedback.get("approve"):
-        print("Approved")
         return Command(goto="finalize_report")
     else:
-        print("Not Approved")
         edits = feedback.get("feedback", "")
         message = HumanMessage(content=f"Report needs refinement. Feedback: {edits}")
         return Command(goto="refine_report", update={"messages": [message], "feedback": edits})
@@ -151,16 +149,18 @@ def finalize_report(state: State) -> State:
     messages = state.get("messages", [])
     namespace = state.get("namespace")
     report = state.get("report", "")
+    feedback = state.get("feedback")
     
-    # Captures episodic memory 
-    episodic_memory_manager.invoke({"messages": messages}, config={"configurable": {"namespace": namespace}})
+    if feedback:
+        # Captures episodic memory 
+        episodic_memory_manager.invoke({"messages": messages}, config={"configurable": {"namespace": namespace}})
 
-    # Optimises namespace prompt
-    trajectories = [(messages, None)]
-    prompt = store.get(("instructions",), key=namespace).value["prompt"]
-    updated_prompt = prompt_optimizer.invoke({"prompt": prompt, "trajectories": trajectories})
+        # Optimises namespace prompt
+        trajectories = [(messages, None)]
+        prompt = store.get(("instructions",), key=namespace).value["prompt"]
+        updated_prompt = prompt_optimizer.invoke({"prompt": prompt, "trajectories": trajectories})
 
-    store.put(("instructions",), key=namespace, value={"prompt": updated_prompt})
+        store.put(("instructions",), key=namespace, value={"prompt": updated_prompt})
 
     # Update STM
     stm_item = store.get(("stm",), key=namespace)
@@ -177,7 +177,6 @@ def finalize_report(state: State) -> State:
 
     prompt = prompt.format(messages=[HumanMessage(content=f"Current STM report: {stm}\n\nNew information: {report}")])
     new_stm = llm.invoke(prompt)
-    print(f"New STM: {new_stm}")
 
     store.put(("stm",), key=namespace, value={"report": new_stm.content})
 
@@ -185,7 +184,9 @@ def finalize_report(state: State) -> State:
     rag = asyncio.run(initialize_rag())
     rag.insert(report)
 
-    return state
+    messages.append(AIMessage(content=f"New STM:\n{new_stm.content}"))
+
+    return {"messages": messages}
 
 # Build the agent graph.
 graph = StateGraph(State)

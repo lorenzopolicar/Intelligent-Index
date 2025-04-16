@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 class Episode(BaseModel):  
     """Write the episode from the perspective of the agent within it. Use the benefit of hindsight to record the memory, saving the agent's key internal thought process so it can learn over time."""
@@ -20,9 +20,11 @@ class Episode(BaseModel):
     )
 
 class GraphInvocationRequest(BaseModel):
-    data: Any      
+    data: Any | None = None
     namespace: str
-    content: str
+    feedback: str | None = None
+    approve: str | None = None
+
 
 class GraphResponse(BaseModel):
     status: str    

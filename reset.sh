@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source .venv/bin/activate
+
 # Define the PostgreSQL connection URI
 DB_URI="postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable"
 
@@ -34,5 +36,5 @@ fi
 echo "Tables dropped successfully."
 sudo service postgresql restart
 
-echo "Starting langgraph dev..."
-langgraph dev
+echo "Removing LightRAG..."
+rm -rf ./intellidesign

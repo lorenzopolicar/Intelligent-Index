@@ -8,28 +8,192 @@ The system leverages a multi-memory architecture—**Short-Term Memory (STM)**, 
 
 ---
 
-## 🧩 System Workflow
+## 🚀 Usage
 
-### 1. 📥 Data Ingestion & Buffering
+The Intelligent Index System API exposes three main endpoints to interact with your LangGraph workflow:
 
-Incoming data is structured as:
-
-```json
-{
-  "namespace": "log_data",
-  "timestamp": "2025-03-31T12:00:00Z",
-  "content": "Detailed log entry or structured information..."
-}
-```
-
-- Data is buffered via **Redis Streams**, organized by `namespace`.
-- Buffers are flushed based on:
-  - **Entry count** (e.g., every 20 records)
-  - **Time intervals** (e.g., every 6 hours)
+1. `/invoke` – for graph invocation (initial + human feedback)  
+2. `/retrieve-short-term` – to retrieve short-term memory (STM) reports  
+3. `/retrieve` – to search over stored and summarized data
 
 ---
 
-### 2. 🧠 Information Extraction Pipeline (via LangGraph)
+### 1. 🔁 Invoke Endpoint
+
+This endpoint starts a new graph invocation or resumes a paused (human-interrupt) graph based on the request payload.
+
+#### 🟢 A. Initial Invocation
+
+Use this when you want to start processing **new log data**.
+
+**Endpoint:**
+```
+POST /invoke
+```
+
+**Payload Example:**
+```json
+{
+  "namespace": "log_data",
+  "data": [
+    {
+      "date": "2025-05-01T06:12:34Z",
+      "content": "INFO [2025-05-01 06:12:34] [thermostat.controller] Living Room temperature set to 22°C by user 'emma' via mobile app.\nDEBUG [2025-05-01 06:12:35] [thermostat.sensor] Current temp: 20.6°C. Target: 22°C. Heating ON.\nINFO [2025-05-01 06:13:01] [event.log] Thermostat reached desired temperature in 2m 18s."
+    },
+    {
+      "date": "2025-05-01T07:45:22Z",
+      "content": "WARN [2025-05-01 07:45:22] [security.camera] Motion detected at Front Door.\nINFO [2025-05-01 07:45:22] [camera.snapshot] Image saved to /storage/security/front_door/2025-05-01_074522.jpg.\nDEBUG [2025-05-01 07:45:23] [notification.service] Push alert sent to homeowner's device."
+    }
+  ]
+}
+```
+
+**Curl Example:**
+```bash
+curl -X POST "http://localhost:8000/invoke" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "namespace": "log_data",
+           "data": [
+             {
+               "date": "2025-05-01T06:12:34Z",
+               "content": "INFO [2025-05-01 06:12:34] [thermostat.controller] Living Room temperature set to 22°C by user '\''emma'\'' via mobile app."
+             },
+             {
+               "date": "2025-05-01T07:45:22Z",
+               "content": "WARN [2025-05-01 07:45:22] [security.camera] Motion detected at Front Door."
+             }
+           ]
+         }'
+```
+
+**Response:**
+- `"status": "final"` – if the graph completes without requiring feedback
+- `"status": "waiting"` – if the graph pauses for human input (with a `"human_interrupt"` message)
+
+---
+
+#### 🟡 B. Human Resume Invocation
+
+When the graph pauses for human input, resume it by sending either an approval or feedback.
+
+**Endpoint:**
+```
+POST /invoke
+```
+
+**Payload – Feedback Example:**
+```json
+{
+  "namespace": "log_data",
+  "feedback": "I don't want recommendations"
+}
+```
+
+**Payload – Approval Example:**
+```json
+{
+  "namespace": "log_data",
+  "approve": "True"
+}
+```
+
+**Curl Examples:**
+```bash
+curl -X POST "http://localhost:8000/invoke" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "namespace": "log_data",
+           "feedback": "I don'\''t want recommendations"
+         }'
+
+curl -X POST "http://localhost:8000/invoke" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "namespace": "log_data",
+           "approve": "True"
+         }'
+```
+
+**Response:**
+- `"status": "final"` – if graph resumes and completes
+- `"status": "waiting"` – if additional feedback is still needed
+
+---
+
+### 2. 📄 Retrieve Short-Term Report
+
+Retrieves the **Short-Term Memory (STM)** report for a given namespace.
+
+**Endpoint:**
+```
+GET /retrieve-short-term
+```
+
+**Query Parameter:**
+```
+namespace=log_data
+```
+
+**Curl Example:**
+```bash
+curl "http://localhost:8000/retrieve-short-term?namespace=log_data"
+```
+
+**Response Example:**
+```json
+{
+  "namespace": "log_data",
+  "short_term_report": "Your aggregated short-term memory report details..."
+}
+```
+
+---
+
+### 3. 🔍 Retrieve Information
+
+Perform a **semantic search** over processed and summarized data.
+
+**Endpoint:**
+```
+GET /retrieve
+```
+
+**Query Parameter:**
+```
+query=What did emma set the temperature to
+```
+
+**Curl Example:**
+```bash
+curl "http://localhost:8000/retrieve?query=What+did+emma+set+the+temperature+to"
+```
+
+**Response Example:**
+```json
+{
+  "query": "What did emma set the temperature to",
+  "results": "Search results for query 'What did emma set the temperature to' would be implemented here."
+}
+```
+
+---
+
+### 🧪 Example Test Script
+
+You can test all endpoints using the provided `src/test_app.py` script. It demonstrates:
+
+- Invoking the graph (initial and human feedback)
+- Retrieving STM reports
+- Performing semantic search queries
+
+This script helps simulate real-world workflows and validates system behavior end-to-end.
+
+---
+
+## 🧩 System Workflow
+
+### 1. 🧠 Information Extraction Pipeline (via LangGraph)
 
 Once a buffer flush is triggered, the **extraction pipeline** begins:
 
@@ -55,7 +219,7 @@ Once a buffer flush is triggered, the **extraction pipeline** begins:
 
 ---
 
-### 3. 👨‍🔬 Domain Expert Feedback Loop
+### 2. 👨‍🔬 Domain Expert Feedback Loop
 
 - The generated report is reviewed by a **domain expert** via UI or interface.
 - Experts:
@@ -68,7 +232,7 @@ Once a buffer flush is triggered, the **extraction pipeline** begins:
 
 ---
 
-### 4. 📚 Memory Systems Update
+### 3. 📚 Memory Systems Update
 
 #### 🧠 Short-Term Memory (STM)
 
@@ -119,7 +283,7 @@ Provides deep contextual knowledge retrieval for agents and queries.
 
 ---
 
-### 5. 🔎 Query-Time Retrieval
+### 4. 🔎 Query-Time Retrieval
 
 When an agent or user issues a query:
 
@@ -139,10 +303,8 @@ The result is **context-rich, expert-aligned, and accurate responses**.
 |-----------------------------|-------------------------------|
 | Workflow Orchestration      | LangGraph                     |
 | Prompt Optimization / Memory| LangMem                       |
-| Buffering System            | Redis Streams                 |
-| Short-Term Memory           | JSON (Distributed Cloud)      |
+| Short-Term Memory           | Postgres                      |
 | Long-Term Memory            | LightRAG (Graph + Vector DB)  |
-| Containerization            | Docker, Kubernetes            |
 
 ---
 
