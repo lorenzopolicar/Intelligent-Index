@@ -76,6 +76,23 @@ def set_instructions(namespace: str = Query(...), instructions: str = Body(...))
     store.put(("instructions",), key=namespace, value={"prompt": instructions})
     return {"namespace": namespace, "instructions": instructions}
 
+# GET /retrieve-instructions endpoint: returns the instructions for a namespace
+@app.get("/retrieve-instructions", response_model=Dict[str, str])
+def retrieve_instructions(namespace: str = Query(...)):
+    instructions_item = store.get(("instructions",), key=namespace)
+    if instructions_item and "prompt" in instructions_item.value:
+        return {"namespace": namespace, "instructions": instructions_item.value["prompt"]}
+    else:
+        raise HTTPException(status_code=404, detail="Instructions not found for given namespace.")
+
+@app.post("/set-short-term-report")
+def set_short_term_report(namespace: str = Query(...), report: str = Body(...)):
+    """
+    Endpoint to manually set a short-term report for a specific namespace.
+    """
+    store.put(("stm",), key=namespace, value={"report": report})
+    return {"namespace": namespace, "short_term_report": report}
+
 # GET /retrieve-short-term endpoint: returns the STM report for a namespace
 @app.get("/retrieve-short-term", response_model=Dict[str, str])
 def retrieve_short_term(namespace: str = Query(...)):

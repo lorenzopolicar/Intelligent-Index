@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="d9" for="edge" attr.name="file_path" attr.type="string" />
+  <key id="d8" for="edge" attr.name="source_id" attr.type="string" />
+  <key id="d7" for="edge" attr.name="keywords" attr.type="string" />
+  <key id="d6" for="edge" attr.name="description" attr.type="string" />
+  <key id="d5" for="edge" attr.name="weight" attr.type="double" />
+  <key id="d4" for="node" attr.name="file_path" attr.type="string" />
+  <key id="d3" for="node" attr.name="source_id" attr.type="string" />
+  <key id="d2" for="node" attr.name="description" attr.type="string" />
+  <key id="d1" for="node" attr.name="entity_type" attr.type="string" />
+  <key id="d0" for="node" attr.name="entity_id" attr.type="string" />
+  <graph edgedefault="undirected">
+    <node id="Syncoid Transfers">
+      <data key="d0">Syncoid Transfers</data>
+      <data key="d1">event</data>
+      <data key="d2">Syncoid Transfers refer to a series of successful logistical operations involving the transfer of goods or data, characterized by efficiency and reliability.</data>
+      <data key="d3">chunk-104b57dba7e4813cc1de7daa1552ca01</data>
+      <data key="d4">unknown_source</data>
+    </node>
+    <node id="No Issues Reported">
+      <data key="d0">No Issues Reported</data>
+      <data key="d1">category</data>
+      <data key="d2">No Issues Reported indicates a successful outcome of the syncoid transfers, highlighting the absence of problems during the operation.</data>
+      <data key="d3">chunk-104b57dba7e4813cc1de7daa1552ca01</data>
+      <data key="d4">unknown_source</data>
+    </node>
+    <edge source="Syncoid Transfers" target="No Issues Reported">
+      <data key="d5">10.0</data>
+      <data key="d6">The successful syncoid transfers resulted in no issues being reported, indicating a smooth operation.</data>
+      <data key="d7">successful operation, efficiency</data>
+      <data key="d8">chunk-104b57dba7e4813cc1de7daa1552ca01</data>
+      <data key="d9">unknown_source</data>
+    </edge>
+  </graph>
+</graphml>

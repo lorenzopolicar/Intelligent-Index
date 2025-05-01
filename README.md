@@ -178,6 +178,8 @@ curl "http://localhost:8000/retrieve?query=What+did+emma+set+the+temperature+to"
 }
 ```
 
+---
+
 ### 4. ✏️ Set Instructions
 
 Define per-namespace instruction prompts that guide how data is processed.
@@ -209,6 +211,71 @@ curl -X POST "http://localhost:8000/set-instructions?namespace=log_data" \
 {
   "namespace": "log_data",
   "instructions": "Summarize temperature data only if mentioned by a user."
+}
+```
+
+---
+
+### 5. 📘 Retrieve Instructions
+
+Fetch the currently stored instructions for a given namespace.
+
+**Endpoint:**
+```
+GET /retrieve-instructions
+```
+
+**Query Parameter:**
+```
+namespace=log_data
+```
+
+**Curl Example:**
+```bash
+curl "http://localhost:8000/retrieve-instructions?namespace=log_data"
+```
+
+**Response Example:**
+```json
+{
+  "namespace": "log_data",
+  "instructions": "Summarize temperature data only if mentioned by a user."
+}
+```
+
+---
+
+### 6. 📝 Set Short-Term Report (Manual)
+
+Manually define or overwrite a **Short-Term Memory (STM)** report for a specific namespace. Useful for testing or admin overrides.
+
+**Endpoint:**
+```
+POST /set-short-term-report
+```
+
+**Query Parameter:**
+```
+namespace=log_data
+```
+
+**Body:**
+```json
+"Manually curated short-term memory report for debugging."
+```
+
+**Curl Example:**
+```bash
+curl -X POST "http://localhost:8000/set-short-term-report?namespace=log_data" \
+     -H "Content-Type: application/json" \
+     -d '"Manually curated short-term memory report for debugging."'
+```
+
+**Response Example:**
+```json
+{
+  "namespace": "log_data",
+  "short_term_report": "Manually curated short-term memory report for debugging."
 }
 ```
 
