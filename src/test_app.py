@@ -115,7 +115,7 @@ def test_retrieve():
 
 def main():
     # Invoke the graph initially with log data.
-    #test_initial_invocation()
+    test_initial_invocation()
     
     # If the graph is waiting for human input, simulate human responses.
     # First, simulate a response with feedback indicating non-approval.
@@ -126,7 +126,6 @@ def main():
 
     # test_retrieve_short_term()
     # test_retrieve()
-    pass
 
 if __name__ == "__main__":
     main()

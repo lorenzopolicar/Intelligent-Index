@@ -27,7 +27,7 @@ AZURE_EMBEDDING_API_VERSION = os.getenv("AZURE_EMBEDDING_API_VERSION")
 AZURE_EMBEDDING_ENDPOINT = os.getenv("AZURE_EMBEDDING_ENDPOINT")
 
 WORKING_DIR = "./intellidesign"
-DB_URI = "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+DB_URI = os.getenv("DB_URI")
 EMBEDDINGS_DIMENSION = 1536
 
 def get_llm():

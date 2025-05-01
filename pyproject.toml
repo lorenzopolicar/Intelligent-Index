@@ -35,6 +35,7 @@ dependencies = [
     "langgraph-checkpoint-postgres>=2.0.19",
     "asyncio>=3.4.3",
     "fastapi>=0.115.12",
+    "psycopg2>=2.9.10",
 ]
 
 

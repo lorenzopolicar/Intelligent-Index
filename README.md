@@ -15,6 +15,7 @@ The Intelligent Index System API exposes three main endpoints to interact with y
 1. `/invoke` – for graph invocation (initial + human feedback)  
 2. `/retrieve-short-term` – to retrieve short-term memory (STM) reports  
 3. `/retrieve` – to search over stored and summarized data
+4. `/set-instructions` – to set instructions per namespace
 
 ---
 
@@ -174,6 +175,40 @@ curl "http://localhost:8000/retrieve?query=What+did+emma+set+the+temperature+to"
 {
   "query": "What did emma set the temperature to",
   "results": "Search results for query 'What did emma set the temperature to' would be implemented here."
+}
+```
+
+### 4. ✏️ Set Instructions
+
+Define per-namespace instruction prompts that guide how data is processed.
+
+**Endpoint:**
+```
+POST /set-instructions
+```
+
+**Query Parameter:**
+```
+namespace=log_data
+```
+
+**Body:**
+```json
+"Summarize temperature data only if mentioned by a user."
+```
+
+**Curl Example:**
+```bash
+curl -X POST "http://localhost:8000/set-instructions?namespace=log_data" \
+     -H "Content-Type: application/json" \
+     -d '"Summarize temperature data only if mentioned by a user."'
+```
+
+**Response Example:**
+```json
+{
+  "namespace": "log_data",
+  "instructions": "Summarize temperature data only if mentioned by a user."
 }
 ```
 

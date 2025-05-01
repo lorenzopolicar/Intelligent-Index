@@ -68,6 +68,14 @@ def invoke_graph(request: GraphInvocationRequest):
     else:
         return GraphResponse(status="final", result=result)
 
+@app.post("/set-instructions")
+def set_instructions(namespace: str = Query(...), instructions: str = Body(...)):
+    """
+    Endpoint to set instructions for a specific namespace.
+    """
+    store.put(("instructions",), key=namespace, value={"prompt": instructions})
+    return {"namespace": namespace, "instructions": instructions}
+
 # GET /retrieve-short-term endpoint: returns the STM report for a namespace
 @app.get("/retrieve-short-term", response_model=Dict[str, str])
 def retrieve_short_term(namespace: str = Query(...)):
@@ -84,4 +92,4 @@ def retrieve_info(query: str = Query(...)):
     return {"query": query, "results": results}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=5002)

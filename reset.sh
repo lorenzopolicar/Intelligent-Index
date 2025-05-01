@@ -3,7 +3,8 @@
 source .venv/bin/activate
 
 # Define the PostgreSQL connection URI
-DB_URI="postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+DB_URI="postgresql://lorenzo:yourpassword2@localhost:5432/intellidesign-agent?sslmode=disable"
+
 
 echo "Dropping table 'store' if it exists..."
 psql "$DB_URI" -c "DROP TABLE IF EXISTS store CASCADE;"
