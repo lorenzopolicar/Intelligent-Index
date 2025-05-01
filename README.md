@@ -17,10 +17,17 @@ The Intelligent Index System API exposes three main endpoints to interact with y
 3. `/retrieve` – to search over stored and summarized data
 4. `/set-instructions` – to set instructions per namespace
 
-To run the FastAPI service, run:
-
+To install dependencies, run:
+```bash
+pip install -r requirements.txt
+```
+or
 ```bash
 uv sync
+```
+
+To run the FastAPI service, run:
+```bash
 bash start.sh
 ```
 
