@@ -20,6 +20,7 @@ The Intelligent Index System API exposes three main endpoints to interact with y
 To run the FastAPI service, run:
 
 ```bash
+uv sync
 bash start.sh
 ```
 
@@ -202,21 +203,21 @@ namespace=log_data
 
 **Body:**
 ```json
-"Summarize temperature data only if mentioned by a user."
+"Custom instructions for extracting information"
 ```
 
 **Curl Example:**
 ```bash
 curl -X POST "http://localhost:8000/set-instructions?namespace=log_data" \
      -H "Content-Type: application/json" \
-     -d '"Summarize temperature data only if mentioned by a user."'
+     -d '"Custom instructions for extracting information"'
 ```
 
 **Response Example:**
 ```json
 {
   "namespace": "log_data",
-  "instructions": "Summarize temperature data only if mentioned by a user."
+  "instructions": "Custom instructions for extracting information"
 }
 ```
 
