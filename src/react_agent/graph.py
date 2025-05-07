@@ -10,7 +10,7 @@ from langgraph.graph import StateGraph, START, END
 
 from react_agent.state import State
 from react_agent.prompts import base_information_extraction_prompt, short_term_memory_manager_system
-from react_agent.utils import data_formatter, get_episodic_memory, initialize_rag, get_llm, load_postgres_store
+from react_agent.utils import data_formatter, get_episodic_memory, initialize_rag, get_llm, get_advanced_llm, load_postgres_store
 from react_agent.schemas import Episode
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -26,6 +26,7 @@ import asyncio
 # Set up
 
 llm = get_llm()
+advanced_llm = get_advanced_llm()
 store = load_postgres_store()
 
 
@@ -89,7 +90,7 @@ def generate_report(state: State) -> State:
     )
 
     prompt = prompt.format(messages=[HumanMessage(content=data_formatter(data))])
-    response = llm.invoke(prompt)
+    response = advanced_llm.invoke(prompt)
     return {"messages": [response], "report": response.content}
 
 
@@ -137,7 +138,7 @@ def refine_report(state: State) -> State:
     prompt = prompt.format(messages=messages)
 
     # Generate the refined report.
-    refined_report = llm.invoke(prompt)
+    refined_report = advanced_llm.invoke(prompt)
     return {"messages": [refined_report], "report": refined_report.content}
 
 
