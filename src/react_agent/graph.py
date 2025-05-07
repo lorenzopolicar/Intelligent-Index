@@ -91,7 +91,7 @@ def generate_report(state: State) -> State:
 
     prompt = prompt.format(messages=[HumanMessage(content=data_formatter(data))])
     response = advanced_llm.invoke(prompt)
-    return {"messages": [response], "report": response.content}
+    return {"messages": [HumanMessage(content=data), response], "report": response.content}
 
 
 # Node: Ask for human approval or feedback.
